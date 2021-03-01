@@ -49,7 +49,7 @@ That's it! I detailed the entire library. Don't let the size of its interface fo
 
 ## Installation
 
-If you are running MacOS with Python 3.8+, execute the following:
+If you are running MacOS or Linux with Python 3.8+, execute the following:
 
 `pip install rolling-quantiles`
 
