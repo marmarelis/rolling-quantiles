@@ -45,7 +45,7 @@ static PyMemberDef description_members[] = { // base class of HighPass and LowPa
     "rank for the quantile element out of the window size"
   }, {
     "subsample_rate", T_UINT, offsetof(struct description, subsample_rate), 0,
-    ""
+    "every how many data points to subsample"
   }, {NULL}
 };
 

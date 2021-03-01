@@ -3,7 +3,7 @@
 
 * Simple, clean, intuitive interface.
 * Supports streaming data or bulk processing.
-* Python 3 bindings for a compact library written in pure C.
+* Python 3 bindings for a lean library written in pure C.
 
 ### A Quick Tour
 
@@ -71,15 +71,23 @@ Make sure to specify `MACOSX_DEPLOYMENT_TARGET=10.X` as a prefix to the build co
 
 I make use of binary heaps that impart desirable guarantees on their amortized runtime. Realistically, their performance may depend on the statistics of the incoming signal. I pummeled the filters with Gaussian Brownian motion to gauge their practical usability under a typical drifting stochastic process.
 
-| `window` | `rolling_quantiles.Pipeline(...)` | `scipy.signal.medfilt(...)` |
-| :------- | --------------------------------: | --------------------------: |
-| 10       | 12 seconds                        | 44 seconds                  |
-| 20       | 15 seconds                        | 88 seconds                  |
-| 30       | 18 seconds                        | 134 seconds                 |
-| 40       | 18 seconds                        | 184 seconds                 |
-| 50       | 19 seconds                        | 237 seconds                 |
-| 1,000    | 33 seconds                        | N/A                         |
+| `window` | `rolling_quantiles` [1] | `scipy` [2] | `pandas` [3] |
+| :------- | ------------------:     | ----------: | -----------: |
+| 10       | 21 seconds              | 47 seconds  | 31 seconds   |
+| 20       | 28 seconds              | 95 seconds  | 35 seconds   |
+| 30       | 30 seconds              | 140 seconds | 37 seconds   |
+| 40       | 34 seconds              | 190 seconds | 40 seconds   |
+| 50       | 36 seconds              | 242 seconds | 40 seconds   |
+| 1,000    | 61 seconds              | N/A         | 62 seconds   |
 
-16-inch 2020 MacBook Pro, single-threaded performance
+Intel(R) Core(TM) i7-8700T CPU @ 2.40GHz, single-threaded performance on Linux. My algorithm looked even better (relative to pandas) on a 2020 MacBook Pro.
+
+[1] `rq.Pipeline(...)`
+
+[2] `scipy.signal.medfilt(...)`
+
+[3] `pd.Series.rolling(*).quantile(...)`
+
+
 
 #### Brought to you by [Myrl](https://myrl.marmarel.is)
