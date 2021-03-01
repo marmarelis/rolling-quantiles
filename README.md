@@ -73,6 +73,7 @@ I make use of binary heaps that impart desirable guarantees on their amortized r
 
 | `window` | `rolling_quantiles` [1] | `scipy` [2] | `pandas` [3] |
 | :------- | ------------------:     | ----------: | -----------: |
+| 4        | 14 seconds              | 22 seconds  | 25 seconds   |
 | 10       | 21 seconds              | 47 seconds  | 31 seconds   |
 | 20       | 28 seconds              | 95 seconds  | 35 seconds   |
 | 30       | 30 seconds              | 140 seconds | 37 seconds   |

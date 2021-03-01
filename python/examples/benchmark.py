@@ -22,7 +22,7 @@ def measure_runtime(f):
 
 signal = np.cumsum(np.random.normal(size=100_000_000))
 series = pd.Series(signal) # construct a priori for fairness
-window_sizes = np.array([10, 20, 30, 40, 50]) + 1 # odd
+window_sizes = np.array([4, 10, 20, 30, 40, 50]) + 1 # odd
 
 rq_times, sc_times, pd_times = [], [], []
 
