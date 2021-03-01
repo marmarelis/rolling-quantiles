@@ -4,3 +4,4 @@ rolling_quantiles.egg-info
 src/
 __pycache__/
 LICENSE
+pypi-token.txt

@@ -49,6 +49,10 @@ That's it! I detailed the entire library. Don't let the size of its interface fo
 
 ## Installation
 
+If you are running MacOS with Python 3.8+, execute the following:
+
+`pip install rolling-quantiles`
+
 I plan on uploading binaries for most common platforms to the Python Package Index---that holds `pip`'s packages---soon. Until then, building the package from source should be straightforward.
 
 ### Building from Source

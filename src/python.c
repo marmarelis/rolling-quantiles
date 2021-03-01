@@ -234,6 +234,9 @@ static PyObject* pipeline_repr(struct pipeline* self) {
 /*
   Currently I accept a scalar or an NumPy array. In the future, I would like to consume a boolean `inplace` parameter
   for the latter instance to allow me to modify the array in place without creating a new one.
+
+  I should consider checking the Python version with macros, and falling back to a traditional-style (not fastcall)
+  method definition for versions prior to 3.7.
  */
 static PyObject* pipeline_feed(struct pipeline* self, PyObject* const* args, Py_ssize_t n_args) {
   if (n_args != 1) {

@@ -1,1 +1,2 @@
 global-exclude .DS_Store
+global-exclude pypi-token.txt
