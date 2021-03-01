@@ -30,7 +30,7 @@ pipe.stride # = 2, how many inputs it takes to produce an output
 
 
 input = np.random.randn(1000)
-output = filter.feed(input) # the core, singular exposed method
+output = pipe.feed(input) # the core, singular exposed method
 
 # every other output will be a NaN to demarcate unready values
 subsampled_output = output[1::pipe.stride]
@@ -43,7 +43,7 @@ That may be a lot to take in, so let me break it down for you:
 * The two filter types are `rq.LowPass` and `rq.HighPass` that compute rolling quantiles and return them as is, and subtract them from the raw signal respectively. Compose them however you like!
 * `NaN`s in the output purposefully indicate missing values, usually due to subsampling. If you pass a `NaN` into a `LowPass` filter, it will slowly deplete its reserve and continue to return valid quantiles until the window empties completely.
 
-We also expose a function `rq.medfilt(signal, window_size)` at the top-level of the package to directly supplant `scipy.signal.medfilt`.
+I also expose a convenience function `rq.medfilt(signal, window_size)` at the top-level of the package to directly supplant `scipy.signal.medfilt`.
 
 That's it! I detailed the entire library. Don't let the size of its interface fool you!
 
