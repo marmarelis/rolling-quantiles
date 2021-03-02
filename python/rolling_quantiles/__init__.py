@@ -1,6 +1,6 @@
 # A Python module is basically a file. A Python package is a directory that acts as a parent module with many submodules.
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 from .triton import *
 
