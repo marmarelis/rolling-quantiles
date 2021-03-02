@@ -81,6 +81,18 @@ I make use of binary heaps that impart desirable guarantees on their amortized r
 | 50       | 36 seconds              | 242 seconds | 40 seconds   |
 | 1,000    | 61 seconds              | N/A         | 62 seconds   |
 
+Likewise, with simulated Gaussian white noise (no drift in the signal):
+
+| `window` | `rolling_quantiles` [1] | `scipy` [2] | `pandas` [3] |
+| :------- | ------------------:     | ----------: | -----------: |
+| 4        | 14 seconds              | 22 seconds  | 25 seconds   |
+| 10       | 20 seconds              | 51 seconds  | 31 seconds   |
+| 20       | 25 seconds              | 105 seconds | 36 seconds   |
+| 30       | 27 seconds              | 156 seconds | 39 seconds   |
+| 40       | 30 seconds              | 218 seconds | 41 seconds   |
+| 50       | 30 seconds              | 279 seconds | 42 seconds   |
+| 1,000    | 45 seconds              | N/A         | 70 seconds   |
+
 Intel(R) Core(TM) i7-8700T CPU @ 2.40GHz, single-threaded performance on Linux. My algorithm looked even better (relative to pandas) on a 2020 MacBook Pro.
 
 [1] `rq.Pipeline(...)`
