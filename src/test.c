@@ -59,7 +59,7 @@ double generate_random_value(void) {
 
 void test_quantile(void) {
   printf("Testing...\n");
-  struct rolling_quantile monitor = create_rolling_quantile_monitor(5, 2);
+  struct rolling_quantile monitor = create_rolling_quantile_monitor(5, 2, NO_INTERPOLATION);
   double test_entries[] = {4.0, 2.0, 3.0, 2.5, 4.5, 3.5, 2.7, 3.9, 3.8, 3.1};
   unsigned test_size = sizeof(test_entries) / sizeof(double);
   for (unsigned i = 0; i < test_size; i += 1) {
@@ -72,7 +72,7 @@ void stress_test_quantile_for_correctness(unsigned size, unsigned n_iterations) 
   printf("Stress-testing...\n");
   if (size % 2 == 0) size += 1;
   unsigned middle = (size-1)/2;
-  struct rolling_quantile monitor = create_rolling_quantile_monitor(size, middle);
+  struct rolling_quantile monitor = create_rolling_quantile_monitor(size, middle, NO_INTERPOLATION);
   double* window = malloc(size*sizeof(double));
   double* buffer = malloc(size*sizeof(double));
   bool* unsorted = malloc(size*sizeof(bool));
@@ -121,8 +121,10 @@ void stress_test_quantile_for_correctness(unsigned size, unsigned n_iterations) 
 
 void test_pipeline(void) {
   struct cascade_description descriptions[] = {
-    {.window = 10, .portion = 2, .subsample_rate = 2, .mode = LOW_PASS},
-    {.window = 3,  .portion = 1, .subsample_rate = 1, .mode = HIGH_PASS}
+    {.window = 5, .portion = 2, .subsample_rate = 2,
+      .mode = LOW_PASS, .interpolation = NO_INTERPOLATION},
+    {.window = 3,  .portion = 2, .subsample_rate = 1,
+      .mode = HIGH_PASS, .interpolation = NO_INTERPOLATION},
   };
   struct filter_pipeline* pipeline = create_filter_pipeline(2, descriptions);
   double test_entries[] = {4.0, 2.0, 3.0, 2.5, 1.5, 1.2, 1.7, 0.9, 0.8, 1.1, 0.1, 0.3};
@@ -134,8 +136,28 @@ void test_pipeline(void) {
   destroy_filter_pipeline(pipeline);
 }
 
+void test_interpolating_pipeline(void) {
+  struct cascade_description descriptions[] = {
+    {.window = 3, .portion = 0, .subsample_rate = 1,
+      .mode = LOW_PASS, .interpolation = {
+        .target_quantile = 0.4, .alpha = 1.0, .beta = 1.0,
+      }},
+  };
+  struct filter_pipeline* pipeline = create_filter_pipeline(1, descriptions);
+  double test_entries[] = {4.0, 2.0, 3.0, 2.5, 1.5, 1.2, 1.7, 0.9, 0.8, 1.1, 0.1, 0.3};
+  unsigned test_size = sizeof(test_entries) / sizeof(double);
+  for (unsigned i = 0; i < test_size; i += 1) {
+    if (!verify_pipeline(pipeline)) {
+      printf("INVALID PIPELINE\n");
+    }
+    double output = feed_filter_pipeline(pipeline, test_entries[i]);
+    printf("%f\n", output);
+  }
+  destroy_filter_pipeline(pipeline);
+}
+
 int main(void) {
   //test_quantile();
   //stress_test_quantile_for_correctness(3001, 10000);
-  test_pipeline();
+  test_interpolating_pipeline();
 }

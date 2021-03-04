@@ -43,6 +43,7 @@ enum cascade_mode {
 struct cascade_description {
   unsigned window;
   unsigned portion;
+  struct interpolation interpolation; // if NAN, refer to `portion`
   unsigned subsample_rate;
   enum cascade_mode mode;
 };
@@ -64,6 +65,7 @@ struct filter_pipeline {
 struct cascade_filter create_cascade_filter(struct cascade_description description);
 struct filter_pipeline* create_filter_pipeline(unsigned n_filters, struct cascade_description* descriptions);
 double feed_filter_pipeline(struct filter_pipeline* pipeline, double entry);
+bool verify_pipeline(struct filter_pipeline* pipeline);
 void destroy_filter_pipeline(struct filter_pipeline* pipeline);
 
 

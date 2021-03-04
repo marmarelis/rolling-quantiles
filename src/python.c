@@ -34,6 +34,9 @@ struct description {
   unsigned window;
   unsigned portion;
   unsigned subsample_rate;
+  double quantile;
+  double alpha;
+  double beta;
 };
 
 static PyMemberDef description_members[] = { // base class of HighPass and LowPass
@@ -46,21 +49,40 @@ static PyMemberDef description_members[] = { // base class of HighPass and LowPa
   }, {
     "subsample_rate", T_UINT, offsetof(struct description, subsample_rate), 0,
     "every how many data points to subsample"
+  }, {
+    "quantile", T_DOUBLE, offsetof(struct description, quantile), 0,
+    "target quantile to achieve by linear interpolation; setting this ignores `portion`"
+  }, {
+    "alpha", T_DOUBLE, offsetof(struct description, alpha), 0,
+    "interpolation parameter, 0 <= alpha <= 1"
+  }, {
+    "beta", T_DOUBLE, offsetof(struct description, beta), 0,
+    "interpolation parameter, 0 <= beta <= 1"
   }, {NULL}
 };
 
 static int description_init(struct description* self, PyObject* args, PyObject* kwds) {
-  static char* keyword_list[] = {"window", "portion", "subsample_rate", NULL};
-  unsigned window;
-  unsigned portion;
-  unsigned subsample_rate;
-  if (!PyArg_ParseTupleAndKeywords(args, kwds, "III", keyword_list, &window, &portion, &subsample_rate)) {
-    PyErr_SetString(PyExc_TypeError, "one of the descriptions is neither a HighPass nor a LowPass");
+  static char* keyword_list[] = {
+    "window", "portion", "subsample_rate", "quantile", "alpha", "beta", NULL};
+  unsigned window = 0;
+  unsigned portion = 0;
+  unsigned subsample_rate = 0;
+  double quantile = NAN;
+  double alpha = 1.0;
+  double beta = 1.0;
+  // specify optional '|' and then keyword-only '$' arguments
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "|$IIIddd", keyword_list,
+      &window, &portion, &subsample_rate, &quantile, &alpha, &beta)) {
+    PyErr_SetString(PyExc_TypeError,
+      "invalid arguments passed to Description (either LowPass or HighPass) constructor");
     return -1;
   }
   self->window = window;
   self->portion = portion;
   self->subsample_rate = subsample_rate;
+  self->quantile = quantile;
+  self->alpha = alpha;
+  self->beta = beta; // my current setup is a little redundant; for instance, I could pass &self->beta directly
   return 0;
 }
 
@@ -199,6 +221,10 @@ static int pipeline_init(struct pipeline* self, PyObject* args, PyObject* kwds) 
       descriptions[i].window = desc_item->window;
       descriptions[i].portion = desc_item->portion;
       descriptions[i].subsample_rate = desc_item->subsample_rate;
+      descriptions[i].interpolation = (struct interpolation) {
+        .target_quantile = desc_item->quantile,
+        .alpha = desc_item->alpha,
+        .beta = desc_item->beta };
       lag += 0.5 * (double)(desc_item->window * stride); // buildup/cascade/waterfall of lags
       stride *= desc_item->subsample_rate;
     }
@@ -214,6 +240,10 @@ static int pipeline_init(struct pipeline* self, PyObject* args, PyObject* kwds) 
     }
   }
   self->filters = create_filter_pipeline((unsigned)n_filters, descriptions);
+  if (self->filters == NULL) {
+    PyErr_SetString(PyExc_ValueError, "invalid descriptions passed to pipeline constructor");
+    return -1;
+  }
   self->stride = stride;
   self->lag = lag;
   return 0;

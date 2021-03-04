@@ -181,6 +181,12 @@ struct heap_element remove_front_element_from_heap(struct heap* heap) { // the c
   return extremum;
 }
 
+double view_front_of_heap(struct heap* heap) {
+  if (heap->n_entries == 0)
+    return NAN;
+  return heap->elements[0].member;
+}
+
 struct heap_element* add_value_to_heap(struct heap* heap, double value) {
   struct heap_element new_entry = {
     .member = value,

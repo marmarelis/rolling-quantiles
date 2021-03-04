@@ -23,7 +23,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-struct rolling_quantile create_rolling_quantile_monitor(unsigned window, unsigned portion) {
+const struct interpolation NO_INTERPOLATION = { .target_quantile = NAN };
+
+struct rolling_quantile create_rolling_quantile_monitor(unsigned window, unsigned portion, struct interpolation interp) {
   //if (window % 2 == 0) this only makes sense for the median special case.
   //  return NULL;
   struct ring_buffer* queue = create_queue(window);
@@ -35,6 +37,7 @@ struct rolling_quantile create_rolling_quantile_monitor(unsigned window, unsigne
     .window = window,
     .portion = portion,
     .count = 0,
+    .interpolation = interp,
   };
   return monitor;
 }
@@ -45,10 +48,49 @@ void destroy_rolling_quantile_monitor(struct rolling_quantile* monitor) {
   destroy_queue(monitor->queue);
 }
 
+static bool is_between_zero_and_one(double val) { // null and unit
+  return (val >= 0.0) && (val <= 1.0);
+}
+
+bool validate_interpolation(struct interpolation interp) {
+  return isnan(interp.target_quantile) || (
+    is_between_zero_and_one(interp.target_quantile) &&
+    is_between_zero_and_one(interp.alpha) &&
+    is_between_zero_and_one(interp.beta));
+}
+
+double compute_interpolation_target(unsigned window, struct interpolation interp) {
+  double real_portion = (double)window * interp.target_quantile;
+  double correction = interp.alpha +
+    interp.target_quantile*(1.0 - interp.alpha - interp.beta);
+  return real_portion + correction;
+}
+
+static double interpolate_current_rolling_quantile(struct rolling_quantile* monitor) {
+  struct interpolation interp = monitor->interpolation; // is copy worth the locality?
+  double target = compute_interpolation_target(monitor->window, interp);
+  double gamma = target - floor(target); // must be between 0 and 1, but avoid checking for the sake of performance
+  unsigned index = (unsigned)floor(target) - 1; // subtract one because `portion` refers to the number of items in the left heap (but `target_portion` does *not*)
+  double current = monitor->current_value.member;
+  if (index == monitor->portion) {
+    if (monitor->right_heap->n_entries == 0)
+      return current;
+    double next = view_front_of_heap(monitor->right_heap);
+    return (1.0-gamma)*current + gamma*next;
+  } else if (index == (monitor->portion-1)) {
+    if (monitor->left_heap->n_entries == 0)
+      return current;
+    double previous = view_front_of_heap(monitor->left_heap);
+    return (1.0-gamma)*previous + gamma*current;
+  }
+  return NAN; // monitor.portion is uncalibrated/corrupted
+}
+
 /*
   Game plan.
     We shall first expel the stale entry, then add the new entry to its rightful receptacle based on its ordering wrt the current value.
     If a NaN is added, we will simply count it as a cycle without a new observation: old will be expelled with no replenishing.
+    *Do not* contaminate the heaps with NaNs. That may cause their rebalancing to spiral out of control.
     If the whole window empties, the current_value will assume its last valid value. It will never revert to NaN as it was initialized.
 */
 double update_rolling_quantile(struct rolling_quantile* monitor, double next_entry) {
@@ -76,6 +118,8 @@ double update_rolling_quantile(struct rolling_quantile* monitor, double next_ent
   }
   monitor->count += 1;
   rebalance_rolling_quantile(monitor); // should run a provably deterministic number of times (once?)
+  if (!isnan(monitor->interpolation.target_quantile))
+    return interpolate_current_rolling_quantile(monitor);
   return monitor->current_value.member;
 }
 

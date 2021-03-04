@@ -66,8 +66,16 @@ static void destroy_high_pass_buffer(struct high_pass_buffer* buffer) {
 }
 
 struct cascade_filter create_cascade_filter(struct cascade_description description) {
+  unsigned portion = description.portion;
+  double target = description.interpolation.target_quantile;
+  if (!isnan(target)) {
+    double target = compute_interpolation_target(
+      description.window, description.interpolation);
+    portion = (unsigned)floor(target) - 1;
+  }
   struct cascade_filter filter = {
-    .monitor = create_rolling_quantile_monitor(description.window, description.portion),
+    .monitor = create_rolling_quantile_monitor(
+      description.window, portion, description.interpolation),
     .clock = 0,
     .subsample_rate = description.subsample_rate,
     .high_pass_buffer = NULL,
@@ -79,7 +87,13 @@ struct cascade_filter create_cascade_filter(struct cascade_description descripti
 }
 
 struct filter_pipeline* create_filter_pipeline(unsigned n_filters, struct cascade_description* descriptions) {
-  struct filter_pipeline* pipeline = malloc(sizeof(struct filter_pipeline) + n_filters*sizeof(struct cascade_filter));
+  for (struct cascade_description* description = descriptions;
+      description != (descriptions + n_filters); description += 1) {
+    if (!validate_interpolation(description->interpolation))
+      return NULL; // before allocating anything
+  }
+  struct filter_pipeline* pipeline = malloc(
+    sizeof(struct filter_pipeline) + n_filters*sizeof(struct cascade_filter));
   pipeline->n_filters = n_filters;
   for (unsigned i = 0; i < n_filters; i += 1) {
     pipeline->filters[i] = create_cascade_filter(descriptions[i]);
@@ -104,6 +118,14 @@ double feed_filter_pipeline(struct filter_pipeline* pipeline, double entry) {
     filter->clock = 0;
   }
   return trickling_value; // made it all the way through the torturous path!
+}
+
+bool verify_pipeline(struct filter_pipeline* pipeline) {
+  for (unsigned i = 0; i < pipeline->n_filters; i += 1) {
+    if (!verify_monitor(&pipeline->filters[i].monitor))
+      return false;
+  }
+  return true;
 }
 
 void destroy_filter_pipeline(struct filter_pipeline* pipeline) {

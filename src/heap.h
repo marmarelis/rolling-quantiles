@@ -54,6 +54,7 @@ bool belongs_to_this_heap(struct heap* heap, struct heap_element* elem);
 struct heap_element* add_value_to_heap(struct heap* heap, double value);
 struct heap_element* add_element_to_heap(struct heap* heap, struct heap_element new_elem); // this and the below should not remove from the conveyor-belt queue, since adding it back would cause it to lose its original position.
 struct heap_element remove_front_element_from_heap(struct heap* heap); // returns by value to signal transfer of ownership. all these methods exposed gives granular control to the operator
+double view_front_of_heap(struct heap* heap);
 void register_in_queue(struct ring_buffer* queue, struct heap_element* elem); // modifies element to point to a fresh spot on the queue. will expire on its own after some time.
 bool expire_stale_entry_in_queue(struct ring_buffer* queue, unsigned n_heaps, ...); // pass pointers to all of the heaps attached to this queue
 struct ring_buffer* create_queue(unsigned size);
