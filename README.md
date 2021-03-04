@@ -15,10 +15,10 @@ import rolling_quantiles as rq
 
 pipe = rq.Pipeline( # rq.Pipeline is the only stateful object
   # declare a cascade of filters by a sequence of immutable description objects
-  rq.LowPass(window=200, portion=100, subsample_rate=2),
-    # the above takes a median (100 out of 200) of the most recent 200 points
-    # and then spits out every other one
-  rq.HighPass(window=10, portion=3,  subsample_rate=1))
+  rq.LowPass(window=201, portion=100, subsample_rate=2),
+    # the above takes a median (101th element out of 201) of the most recent 200
+    # points and then spits out every other one
+  rq.HighPass(window=10, portion=3)
     # that subsampled rolling median is then fed into this filter that takes a
     # 30% quantile on a window of size 10, and subtracts it from its raw input
 
@@ -42,6 +42,7 @@ That may be a lot to take in, so let me break it down for you:
 * `.feed(*)` takes in a Python number or `np.array` and its output is shaped likewise.
 * The two filter types are `rq.LowPass` and `rq.HighPass` that compute rolling quantiles and return them as is, and subtract them from the raw signal respectively. Compose them however you like!
 * `NaN`s in the output purposefully indicate missing values, usually due to subsampling. If you pass a `NaN` into a `LowPass` filter, it will slowly deplete its reserve and continue to return valid quantiles until the window empties completely.
+* `rq.LowPass` and `rq.HighPass` alternatively take in a `quantile=q` argument, `0<=q<=1`. The filters would perform a linear interpolation in this case. In order to control the statistical characteristics of this quantile estimate, parameters `alpha` and `beta` are exposed as well with default values `(1, 1)`. Refer to SciPy's [documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mstats.mquantiles.html) for details on this aspect.
 
 I also expose a convenience function `rq.medfilt(signal, window_size)` at the top-level of the package to directly supplant `scipy.signal.medfilt`.
 

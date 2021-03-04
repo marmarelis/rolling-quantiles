@@ -66,7 +66,7 @@ static int description_init(struct description* self, PyObject* args, PyObject* 
     "window", "portion", "subsample_rate", "quantile", "alpha", "beta", NULL};
   unsigned window = 0;
   unsigned portion = 0;
-  unsigned subsample_rate = 0;
+  unsigned subsample_rate = 1;
   double quantile = NAN;
   double alpha = 1.0;
   double beta = 1.0;
@@ -75,6 +75,10 @@ static int description_init(struct description* self, PyObject* args, PyObject* 
       &window, &portion, &subsample_rate, &quantile, &alpha, &beta)) {
     PyErr_SetString(PyExc_TypeError,
       "invalid arguments passed to Description (either LowPass or HighPass) constructor");
+    return -1;
+  }
+  if (window == 0) {
+    PyErr_SetString(PyExc_ValueError, "please set a positive window size");
     return -1;
   }
   self->window = window;
