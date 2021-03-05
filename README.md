@@ -95,7 +95,7 @@ Likewise, with simulated Gaussian white noise (no drift in the signal):
 | 50       | 30 seconds              | 279 seconds | 42 seconds   |
 | 1,000    | 45 seconds              | N/A         | 70 seconds   |
 
-Intel(R) Core(TM) i7-8700T CPU @ 2.40GHz, single-threaded performance on Linux. My algorithm looked even better (relative to pandas) on a 2020 MacBook Pro.
+Intel(R) Core(TM) i7-8700T CPU @ 2.40GHz, single-threaded performance on Linux. My algorithm looked even better (relative to pandas) on a 2020 MacBook Pro. See also this [StackOverflow answer](https://stackoverflow.com/questions/60100276/fastest-way-for-2d-rolling-window-quantile/66482238#66482238) for a particular use case.
 
 [1] `rq.Pipeline(...)`
 
