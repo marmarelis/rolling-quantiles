@@ -49,13 +49,14 @@ I also expose a convenience function `rq.medfilt(signal, window_size)` at the to
 That's it! I detailed the entire library. Don't let the size of its interface fool you!
 
 ## Installation
+[![Python tests](https://github.com/marmarelis/rolling-quantiles/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/marmarelis/rolling-quantiles/actions/workflows/ci.yml)
 [![Downloads](https://static.pepy.tech/personalized-badge/rolling-quantiles?period=total&units=international_system&left_color=blue&right_color=orange&left_text=pip%20downloads)](https://pepy.tech/project/rolling-quantiles)
 
-If you are running MacOS or Linux with Python 3.8+, execute the following:
+If you are running Linux, MacOS, or Windows with Python 3.8+ and NumPy ~1.20, execute the following:
 
 `pip install rolling-quantiles`
 
-I plan on uploading binaries for most common platforms to the Python Package Index---that holds `pip`'s packages---soon. Until then, building the package from source should be straightforward.
+These are the conditions under which binaries are built and sent to the Python Package Index, which holds `pip`'s packages. Should the NumPy version be unsuitable, for instance, I suggest building the package from source. This is rather straightforward because the handful of source files in C have absolutely minimal dependencies.
 
 ### Building from Source
 
