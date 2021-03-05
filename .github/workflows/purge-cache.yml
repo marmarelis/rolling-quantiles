@@ -1,0 +1,12 @@
+# purge cache of our README's "pip downloads" badge from Github's static image host, compelling it to refresh regularly.
+name: Purge cache.
+on:
+  schedule:
+  - cron: "0 0 * * *" # cron syntax is funky. herein, we execute at the end of every day (UTC)
+jobs:
+  clean-pip-downloads-badge:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Issue the curl request.
+      run: |
+        curl -X PURGE https://camo.githubusercontent.com/ded078724cea6c7f2e1fdf788d2c4a7ec9c2a88b558493e2c0f34d397914b18e/68747470733a2f2f7374617469632e706570792e746563682f706572736f6e616c697a65642d62616467652f726f6c6c696e672d7175616e74696c65733f706572696f643d746f74616c26756e6974733d696e7465726e6174696f6e616c5f73797374656d266c6566745f636f6c6f723d626c75652672696768745f636f6c6f723d6f72616e6765266c6566745f746578743d706970253230646f776e6c6f616473

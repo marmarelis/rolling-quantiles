@@ -1,4 +1,4 @@
-name: Python tests
+name: Python tests.
 
 on: [push, pull_request]
 
@@ -11,11 +11,11 @@ jobs: # jobs run in parallel. individual steps within a job do not.
         python-version: [3.8]
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python-version }}.
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Build and install
+    - name: Build and install.
       shell: bash # not cmd/powershell that windows uses
       run: |
         python -m pip install --upgrade pip build
@@ -23,7 +23,7 @@ jobs: # jobs run in parallel. individual steps within a job do not.
         python -m build --wheel
         python -m pip install dist/*.whl
         cd ..
-    - name: Run tests
+    - name: Run tests.
       shell: bash
       run: | # pytest with no args. if it fails with a nonzero status code, that *should* pop up as a failure in Github's statuses
         cd python/tests
