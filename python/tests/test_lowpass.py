@@ -1,11 +1,9 @@
-# for pytest
+# for pytest. I do not hook this up to pyproject.toml as it is intended or perhaps best practice.
 
 import numpy as np
 import pandas as pd
 import rolling_quantiles as rq
-
-def example_input(length):
-  return np.cumsum(np.random.normal(size=length))
+from input import example_input
 
 def test_median_scalar_inputs(window_size=3, length=100): # no interpolation yet
   pipe = rq.Pipeline(rq.LowPass(window=window_size, portion=window_size//2))

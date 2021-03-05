@@ -70,14 +70,15 @@ static double interpolate_current_rolling_quantile(struct rolling_quantile* moni
   struct interpolation interp = monitor->interpolation; // is copy worth the locality?
   double target = compute_interpolation_target(monitor->window, interp);
   double gamma = target - floor(target); // must be between 0 and 1, but avoid checking for the sake of performance
-  unsigned index = (unsigned)floor(target) - 1; // subtract one because `portion` refers to the number of items in the left heap (but `target_portion` does *not*)
+  int index = (int)floor(target) - 1; // subtract one because `portion` refers to the number of items in the left heap (but `target_portion` does *not*)
+  int portion = (int)monitor->portion;
   double current = monitor->current_value.member;
-  if (index == monitor->portion) {
+  if (index == portion) {
     if (monitor->right_heap->n_entries == 0)
       return current;
     double next = view_front_of_heap(monitor->right_heap);
     return (1.0-gamma)*current + gamma*next;
-  } else if (index == (monitor->portion-1)) {
+  } else if (index == (portion-1)) {
     if (monitor->left_heap->n_entries == 0)
       return current;
     double previous = view_front_of_heap(monitor->left_heap);

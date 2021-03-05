@@ -71,7 +71,7 @@ struct cascade_filter create_cascade_filter(struct cascade_description descripti
   if (!isnan(target)) {
     double target = compute_interpolation_target(
       description.window, description.interpolation);
-    portion = (unsigned)floor(target) - 1;
+    portion = (unsigned)fmax(floor(target), 1.0) - 1;
   }
   struct cascade_filter filter = {
     .monitor = create_rolling_quantile_monitor(
