@@ -1,4 +1,7 @@
 # Rolling Quantiles for NumPy
+
+[![Python tests](https://github.com/marmarelis/rolling-quantiles/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/marmarelis/rolling-quantiles/actions/workflows/ci.yml)
+
 ## Hyper-efficient and composable filters.
 
 * Simple, clean, intuitive interface.
@@ -49,8 +52,7 @@ I also expose a convenience function `rq.medfilt(signal, window_size)` at the to
 That's it! I detailed the entire library. Don't let the size of its interface fool you!
 
 ## Installation
-[![Python tests](https://github.com/marmarelis/rolling-quantiles/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/marmarelis/rolling-quantiles/actions/workflows/ci.yml)
-[![Downloads](https://static.pepy.tech/personalized-badge/rolling-quantiles?period=total&units=international_system&left_color=blue&right_color=orange&left_text=pip%20downloads)](https://pepy.tech/project/rolling-quantiles)
+[![Downloads](https://pepy.tech/badge/rolling-quantiles/month)](https://pepy.tech/project/rolling-quantiles)
 
 If you are running Linux, MacOS, or Windows with Python 3.8+ and NumPy ~1.20, execute the following:
 
