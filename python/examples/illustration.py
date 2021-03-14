@@ -11,3 +11,12 @@ filter = rq.Pipeline( # stateful filter
 
 input = np.random.randn(1000)
 output = filter.feed(input) # a single `ufunc` entry point that takes in arrays or scalars and spits out an appropriate amount of output
+
+
+## CONCEPT.
+
+rq.LineUp(rq.Pipeline) # possibly parallelized execution of parallel pipelines
+
+big_input = np.random.randn(100, 1000)
+# broadcast. route one row to each pipeline.
+big_output = pipes.feed(big_input) # respects Fortran or C ordering to preserve cache locality
