@@ -21,7 +21,7 @@ pipe = rq.Pipeline( # rq.Pipeline is the only stateful object
   rq.LowPass(window=201, portion=100, subsample_rate=2),
     # the above takes a median (101th element out of 201) of the most recent 200
     # points and then spits out every other one
-  rq.HighPass(window=10, portion=3)
+  rq.HighPass(window=10, portion=3))
     # that subsampled rolling median is then fed into this filter that takes a
     # 30% quantile on a window of size 10, and subtracts it from its raw input
 
@@ -46,13 +46,24 @@ That may be a lot to take in, so let me break it down for you:
 * The two filter types are `rq.LowPass` and `rq.HighPass` that compute rolling quantiles and return them as is, and subtract them from the raw signal respectively. Compose them however you like!
 * `NaN`s in the output purposefully indicate missing values, usually due to subsampling. If you pass a `NaN` into a `LowPass` filter, it will slowly deplete its reserve and continue to return valid quantiles until the window empties completely.
 * `rq.LowPass` and `rq.HighPass` alternatively take in a `quantile=q` argument, `0<=q<=1`. The filters would perform a linear interpolation in this case. In order to control the statistical characteristics of this quantile estimate, parameters `alpha` and `beta` are exposed as well with default values `(1, 1)`. Refer to SciPy's [documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.mstats.mquantiles.html) for details on this aspect.
+```python
+interpolated_pipe = rq.Pipeline(
+    # attempt to estimate the exact 40%-quantile by the
+    # default linear interpolation with parameters (1, 1)
+    rq.LowPass(window=30, quantile=0.4),
+    # here, the estimate is "approximately unbiased" in
+    # the case of Gaussian white noise
+    rq.HighPass(window=10, quantile=0.3,
+      alpha=3/8, beta=3/8))
+```
+See this [Wikipedia section](https://en.wikipedia.org/wiki/Quantile#Estimating_quantiles_from_a_sample) for an elucidating overview.
 
 I also expose a convenience function `rq.medfilt(signal, window_size)` at the top-level of the package to directly supplant `scipy.signal.medfilt`.
 
 That's it! I detailed the entire library. Don't let the size of its interface fool you!
 
 ## Installation
-[![Downloads](https://pepy.tech/badge/rolling-quantiles/month)](https://pepy.tech/project/rolling-quantiles)
+[![Downloads](https://pepy.tech/badge/rolling-quantiles)](https://pepy.tech/project/rolling-quantiles)
 
 If you are running Linux, MacOS, or Windows with Python 3.8+ and NumPy ~1.20, execute the following:
 
