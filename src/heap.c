@@ -20,12 +20,16 @@
 #include <tgmath.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <string.h>
+#include <stdio.h>
 
 struct ring_buffer* create_queue(unsigned size) {
-  struct ring_buffer* buffer = malloc(sizeof(struct ring_buffer) + size*sizeof(struct heap_element*));
+  unsigned buffer_size = size * sizeof(ring_buffer_elem);
+  struct ring_buffer* buffer = malloc(sizeof(struct ring_buffer) + buffer_size);
   buffer->size = size;
   buffer->n_entries = 0;
-  buffer->head = &buffer->entries[0];
+  buffer->head = &buffer->entries[0]; // slight semantic (NOT teleological) distinction between this and `buffer->entries`
+  memset(buffer->entries, 0, buffer_size);
   return buffer;
 }
 
@@ -50,26 +54,30 @@ bool is_ring_buffer_full(struct ring_buffer* buffer) {
   return buffer->n_entries == buffer->size;
 }
 
-struct heap_element* get_oldest_entry_in_ring_buffer(struct ring_buffer* buffer) { // only valid when the buffer is full!
-  /*ring_buffer_elem* potential_prev = buffer->head - 1;
-  if (potential_prev < buffer->entries) { // same as &buffer->entries[0] ?
-    potential_prev = buffer->entries + buffer->size - 1;
-  }
-  return *potential_prev;*/
-  return *buffer->head;
+bool is_ring_buffer_empty(struct ring_buffer* buffer) {
+  return buffer->n_entries == 0;
 }
 
-struct heap_element** get_next_position_in_ring_buffer(struct ring_buffer* buffer) {
-  ring_buffer_elem* next = buffer->head++;
+void advance_ring_buffer(struct ring_buffer* buffer) {
+  buffer->head++;
   if (buffer->head == (buffer->entries + buffer->size)) {
     buffer->head = buffer->entries;
   }
-  if (buffer->n_entries < buffer->size) {
-    buffer->n_entries += 1;
-  }
-  return next;
 }
 
+static // buffer does not have to be full as long as it isn't empty, but it might return NULL if it isn't full
+ring_buffer_elem extract_oldest_entry_from_ring_buffer(struct ring_buffer* buffer) { // removes the entry too, and increments the head
+  struct heap_element* entry = *buffer->head;
+  *buffer->head = NULL;
+  return entry;
+}
+
+static
+ring_buffer_elem* get_next_position_in_ring_buffer(struct ring_buffer* buffer) {
+  return buffer->head;
+}
+
+static
 void xor_swap(void* a, void* b, size_t size) { // overkill hahah. do it byte by byte so that we are data-type agnostic
   char* a_bytes = a;
   char* b_bytes = b;
@@ -80,18 +88,38 @@ void xor_swap(void* a, void* b, size_t size) { // overkill hahah. do it byte by 
   }
 }
 
-void swap_elements_in_heap(struct heap_element* a, struct heap_element* b) {
-  xor_swap(&a->member, &b->member, sizeof(double));
-  if (a->loc_in_buffer && b->loc_in_buffer) {
-    xor_swap(a->loc_in_buffer, b->loc_in_buffer, sizeof(struct heap_element*));
-  } else if (a->loc_in_buffer) {
-    *a->loc_in_buffer = b;
-  } else if (b->loc_in_buffer) {
-    *b->loc_in_buffer = a;
+static
+void plain_swap(void* a, void* b, size_t size) {
+  char* a_bytes = a;
+  char* b_bytes = b;
+  for (size_t i = 0; i < size; i += 1) {
+    char c = a_bytes[i];
+    a_bytes[i] = b_bytes[i];
+    b_bytes[i] = c;
   }
-  xor_swap(&a->loc_in_buffer, &b->loc_in_buffer, sizeof(struct heap_element**));
 }
 
+static
+void swap(void* a, void* b, size_t size) {
+  plain_swap(a, b, size);
+}
+
+static
+void swap_elements_in_heap(struct heap_element* a, struct heap_element* b) {
+  swap(&a->member, &b->member, sizeof(double));
+  /*if (a->loc_in_buffer && b->loc_in_buffer) { swap with actual addresses, rather than queue entries
+    swap(a->loc_in_buffer, b->loc_in_buffer, sizeof(struct heap_element*));
+  } else*/
+  if (a->loc_in_buffer) {
+    *a->loc_in_buffer = b;
+  }
+  if (b->loc_in_buffer) {
+    *b->loc_in_buffer = a;
+  }
+  swap(&a->loc_in_buffer, &b->loc_in_buffer, sizeof(struct heap_element**));
+}
+
+static
 void trickle_down(struct heap* heap, unsigned i) { // conscious of the tags in the queue that may be invalidated
   struct heap_element* node         = heap->elements + i;
   struct heap_element* first_child  = heap->elements + (2*i + 1);
@@ -144,6 +172,7 @@ void trickle_down(struct heap* heap, unsigned i) { // conscious of the tags in t
   }
 }
 
+static
 unsigned trickle_up(struct heap* heap, unsigned i) {
   if (i == 0) return 0;
   unsigned pos = i;
@@ -168,17 +197,24 @@ bool belongs_to_this_heap(struct heap* heap, struct heap_element* elem) { // whe
   return (elem >= heap->elements) && (elem < (heap->elements + heap->n_entries));
 }
 
-struct heap_element remove_front_element_from_heap(struct heap* heap) { // the circular queue still maintains its order, and simply skips over the entries that have already been extracted when it's their time to expire
-  if (heap->n_entries == 0)
-    return (struct heap_element) { .member = NAN, .loc_in_buffer = NULL };
+void remove_front_element_from_heap(struct heap* heap, struct heap_element* dest) { // the circular queue still maintains its order, and simply skips over the entries that have already been extracted when it's their time to expire
+  if (heap->n_entries == 0) {
+    *dest = (struct heap_element) { .member = NAN, .loc_in_buffer = NULL };
+    return;
+  }
   struct heap_element* last_node = heap->elements + heap->n_entries - 1;
   struct heap_element* root_node = heap->elements;
-  struct heap_element extremum = *root_node;
+  //struct heap_element extremum = *root_node;
   swap_elements_in_heap(root_node, last_node);
   heap->n_entries -= 1;
   trickle_down(heap, 0);
-  *extremum.loc_in_buffer = NULL; // clear our entry in the queue so that it doesn't mess up the guy that takes our address. keep track of loc_in_buffer so that it can be updated later.
-  return extremum;
+  //*extremum.loc_in_buffer = NULL; // clear our entry in the queue so that it doesn't mess up the guy that takes our address. keep track of loc_in_buffer so that it can be updated later.
+  swap_elements_in_heap(last_node, dest); // `last_node` cannot be affected by the trickler
+  if (last_node->loc_in_buffer != NULL) {
+    // since `swap_elements_in_heap` is quite aggressive with restoring previously-null queue entries, clear this out for the case that it is never brought back
+    // honestly, the (teleological! post hoc?) reasoning behind this line is a little confusing
+    *last_node->loc_in_buffer = NULL;
+  }
 }
 
 double view_front_of_heap(struct heap* heap) {
@@ -188,6 +224,7 @@ double view_front_of_heap(struct heap* heap) {
 }
 
 struct heap_element* add_value_to_heap(struct heap* heap, double value) {
+  // note: cannot swap into this local variable, even though its own `loc_in_buffer` is empty
   struct heap_element new_entry = {
     .member = value,
     .loc_in_buffer = NULL };
@@ -198,21 +235,7 @@ struct heap_element* add_value_to_heap(struct heap* heap, double value) {
 struct heap_element* add_element_to_heap(struct heap* heap, struct heap_element new_elem) { // returns new heap element, not -> if it popped its oldest member in order to make space, then it returns heap_element with loc_in_buffer repurposed to act like an optional value's flag
   if (heap->n_entries == heap->size)
     return NULL; // (struct heap_element) { .member = NAN, .loc_in_buffer = NULL };
-  unsigned n_existing_entries = heap->n_entries;
-  //struct heap_element* oldest_entry = get_oldest_entry_in_ring_buffer(heap->queue);
-  /*if (is_ring_buffer_full(heap->queue)) { // we actually care not if it's full, only if it's our time to overwrite a stale entry.
-    struct heap_element popped_entry = *oldest_entry;
-    struct heap_element* last_entry = heap->elements + n_existing_entries - 1;
-    if (last_entry != oldest_entry) {
-      *oldest_entry = *last_entry; // last_entry will stay in the queue after another entry is added, since oldest_entry will be thrown instead. no need to void last_entry since we'll immediately add a new one on top of it
-      *last_entry->loc_in_buffer = oldest_entry;
-    }
-    *new_entry.loc_in_buffer = last_entry;
-    *last_entry = new_entry;
-    trickle_up(heap, n_existing_entries - 1);
-    return popped_entry;
-  } else { // there is at least one empty spot */
-  unsigned index_to_place = n_existing_entries;
+  unsigned index_to_place = heap->n_entries;
   heap->elements[index_to_place] = new_elem;
   if (new_elem.loc_in_buffer != NULL) { // if this element was taken from a different heap, rectify its stale pointer. do it before trickling up, so that the correct pointer is propagated
     *new_elem.loc_in_buffer = heap->elements + index_to_place;
@@ -223,15 +246,28 @@ struct heap_element* add_element_to_heap(struct heap* heap, struct heap_element 
 }
 
 void register_in_queue(struct ring_buffer* queue, struct heap_element* elem) {
+  queue->n_entries += 1;
   elem->loc_in_buffer = get_next_position_in_ring_buffer(queue);
   *elem->loc_in_buffer = elem;
 }
 
-bool expire_stale_entry_in_queue(struct ring_buffer* queue, unsigned n_heaps, ...) {
-  if (!is_ring_buffer_full(queue))
-    return true;
-  struct heap_element* oldest_elem = get_oldest_entry_in_ring_buffer(queue);
-  queue->n_entries -= 1;
+/*
+  Return value.
+  -> if -1, the queue was already empty
+  -> if 0, the expired entry did not belong to a heap
+  -> if positive, then the index of the expired entry's heap (1-based)
+ */
+int expire_stale_entry_in_queue(struct ring_buffer* queue, unsigned n_heaps, ...) {
+  //if (!is_ring_buffer_full(queue)) drastic change of behavior since this...
+  //  return true;
+  if (is_ring_buffer_empty(queue))
+    return -1;
+  struct heap_element* oldest_elem = extract_oldest_entry_from_ring_buffer(queue);
+  if (oldest_elem == NULL)
+    return -1;
+  if (queue->n_entries > 0) { // this better not happen, but have a safeguard just in case...
+    queue->n_entries -= 1;
+  }
   va_list heaps;
   va_start(heaps, n_heaps);
   unsigned i;
@@ -239,14 +275,14 @@ bool expire_stale_entry_in_queue(struct ring_buffer* queue, unsigned n_heaps, ..
     struct heap* heap = va_arg(heaps, struct heap*);
     if (!belongs_to_this_heap(heap, oldest_elem))
       continue;
-    *oldest_elem->loc_in_buffer = NULL; // signal that it's already been removed. since we already advanced the buffer, we may not have to do this in practice.
+    //*oldest_elem->loc_in_buffer = NULL; // signal that it's already been removed. since we already advanced the buffer, we may not have to do this in practice.
     struct heap_element* last_elem = heap->elements + heap->n_entries - 1;
     heap->n_entries -= 1;
     if (last_elem != oldest_elem) {
       double oldest_value = oldest_elem->member;
       double last_value = last_elem->member;
       *oldest_elem = *last_elem; // last_entry will stay in the queue after another entry is added, since oldest_entry will be thrown instead. no need to void last_entry since we'll immediately add a new one on top of it
-      *last_elem->loc_in_buffer = oldest_elem;
+      *last_elem->loc_in_buffer = oldest_elem; // in the end, we are swapping without care for the ultimate contents of the old last_elem
       unsigned index_of_oldest = oldest_elem - heap->elements;
       if ((heap->mode == MIN_HEAP && oldest_value < last_value) ||
           (heap->mode == MAX_HEAP && oldest_value > last_value)) {
@@ -258,7 +294,11 @@ bool expire_stale_entry_in_queue(struct ring_buffer* queue, unsigned n_heaps, ..
     break;
   }
   va_end(heaps);
-  return i < n_heaps; // did we locate an owner heap?
+  if (i < n_heaps) { // did we locate an owner heap?
+    return (int)(i + 1);
+  } else {
+    return 0;
+  }
 }
 
 bool verify_heap(struct heap* heap) {

@@ -24,12 +24,12 @@ enum heap_mode {
   MAX_HEAP, MIN_HEAP
 };
 
+typedef struct heap_element* ring_buffer_elem;
+
 struct heap_element {
   double member;
-  struct heap_element** loc_in_buffer; // element is marked as nonexistent when this is set to null
+  ring_buffer_elem* loc_in_buffer; // element is marked as nonexistent when this is set to null
 };
-
-typedef struct heap_element* ring_buffer_elem;
 
 struct ring_buffer {
   unsigned size; // could've called this the capacity
@@ -53,10 +53,13 @@ struct heap { // I like this simple naming scheme best.
 bool belongs_to_this_heap(struct heap* heap, struct heap_element* elem);
 struct heap_element* add_value_to_heap(struct heap* heap, double value);
 struct heap_element* add_element_to_heap(struct heap* heap, struct heap_element new_elem); // this and the below should not remove from the conveyor-belt queue, since adding it back would cause it to lose its original position.
-struct heap_element remove_front_element_from_heap(struct heap* heap); // returns by value to signal transfer of ownership. all these methods exposed gives granular control to the operator
+void remove_front_element_from_heap(struct heap* heap, struct heap_element* destination); // swaps into the destination slot. no longer returns by value to signal transfer of ownership. all these methods exposed gives granular control to the operator
 double view_front_of_heap(struct heap* heap);
+bool is_ring_buffer_full(struct ring_buffer* queue);
+bool is_ring_buffer_empty(struct ring_buffer* queue);
+void advance_ring_buffer(struct ring_buffer* queue);
 void register_in_queue(struct ring_buffer* queue, struct heap_element* elem); // modifies element to point to a fresh spot on the queue. will expire on its own after some time.
-bool expire_stale_entry_in_queue(struct ring_buffer* queue, unsigned n_heaps, ...); // pass pointers to all of the heaps attached to this queue
+int expire_stale_entry_in_queue(struct ring_buffer* queue, unsigned n_heaps, ...); // pass pointers to all of the heaps attached to this queue
 struct ring_buffer* create_queue(unsigned size);
 struct heap* create_heap(enum heap_mode mode, unsigned size, struct ring_buffer* queue);
 bool verify_heap(struct heap* heap);

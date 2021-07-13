@@ -19,3 +19,13 @@ def test_median_array_input(window_size=71, length=1000):
   y = pipe.feed(x)
   z = pd.Series(x).rolling(window_size).median()
   assert np.equal(y[window_size:], z.values[window_size:]).all() # exact equality, since no arithmetic is done on the numbers
+
+def test_basic_nans(window_size=5, length=20):
+  # make sure the pipeline effectively flushes its contents with NaNs
+  pipe = rq.Pipeline(rq.LowPass(window=window_size, portion=window_size//2))
+  x = example_input(length)
+  y = pipe.feed(x)
+  for i in range(window_size):
+    pipe.feed(np.nan)
+  z = pipe.feed(x)
+  assert np.equal(y, z).all()

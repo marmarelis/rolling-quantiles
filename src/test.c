@@ -32,8 +32,10 @@ void test_single_heap(void) {
     expire_stale_entry_in_queue(queue, 1, heap);
     register_in_queue(queue, elem);
   }
+  struct heap_element output;
   for (unsigned i = 0; i < 10; i += 1) {
-    printf("%f\n", remove_front_element_from_heap(heap).member);
+    remove_front_element_from_heap(heap, &output);
+    printf("%f\n", output.member);
   }
 }
 
@@ -48,8 +50,10 @@ void test_multiple_heaps(void) {
     expire_stale_entry_in_queue(queue, 2, heap1, heap2);
     register_in_queue(queue, elem);
   }
+  struct heap_element output;
   for (unsigned i = 0; i < 10; i += 1) {
-    printf("%f\n", remove_front_element_from_heap(heap).member);
+    remove_front_element_from_heap(heap, &output);
+    printf("%f\n", output.member);
   }
 }
 
@@ -157,7 +161,7 @@ void test_interpolating_pipeline(void) {
 }
 
 int main(void) {
-  //test_quantile();
-  //stress_test_quantile_for_correctness(3001, 10000);
-  test_interpolating_pipeline();
+  test_quantile();
+  stress_test_quantile_for_correctness(3001, 10000);
+  //test_interpolating_pipeline();
 }

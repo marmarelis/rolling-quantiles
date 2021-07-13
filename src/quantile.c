@@ -92,29 +92,38 @@ static double interpolate_current_rolling_quantile(struct rolling_quantile* moni
     We shall first expel the stale entry, then add the new entry to its rightful receptacle based on its ordering wrt the current value.
     If a NaN is added, we will simply count it as a cycle without a new observation: old will be expelled with no replenishing.
     *Do not* contaminate the heaps with NaNs. That may cause their rebalancing to spiral out of control.
-    If the whole window empties, the current_value will assume its last valid value. It will never revert to NaN as it was initialized.
+    Flushing. If the whole window empties, effectively reset the filter and revert `current_value` to its initial state.
 */
 double update_rolling_quantile(struct rolling_quantile* monitor, double next_entry) {
-  unsigned left_entries = monitor->left_heap->n_entries;
+  //unsigned left_entries = monitor->left_heap->n_entries;
   unsigned right_entries = monitor->right_heap->n_entries;
-  unsigned total_entries = left_entries + right_entries + 1;
+  //unsigned total_entries = left_entries + right_entries + 1;
+  // we control the advancement ourselves, since it must happen exactly once per call to this method
+  // this makes life much easier than engineering an overly clever ring-buffer interface
+  advance_ring_buffer(monitor->queue);
   if (isnan(monitor->current_value.member)) { // total_entries will be 1 regardless of whether current_value has anything in it. we want to be careful, since NaNs will also signal missing values coming in
+    if (isnan(next_entry))
+      return NAN;
     monitor->current_value.member = next_entry;
     register_in_queue(monitor->queue, &monitor->current_value);
     monitor->count += 1;
     return next_entry;
   }
-  if ((monitor->count >= monitor->window) && (total_entries > 1)) {
-    bool expired_in_heap = expire_stale_entry_in_queue(monitor->queue, 2, monitor->left_heap, monitor->right_heap);
-    if (!expired_in_heap) {
-      struct heap* some_heap = (right_entries > 0)? monitor->right_heap : monitor->left_heap; // pick arbitrarily
-      struct heap_element substitute_elem = remove_front_element_from_heap(some_heap);
-      monitor->current_value = substitute_elem;
+  int expired_in_heap = expire_stale_entry_in_queue(monitor->queue, 2, monitor->left_heap, monitor->right_heap);
+  if (expired_in_heap == 0) { // expired, but did not belong to a heap
+    if (monitor->queue->n_entries == 0) { // there do not exist other entries
+      // basically reset and go again
+      monitor->current_value.member = NAN;
+      return update_rolling_quantile(monitor, next_entry); // a delicate corner case, looping us back to the top. tread carefully
     }
-  }
+    struct heap* some_heap = (right_entries > 0)? monitor->right_heap : monitor->left_heap; // pick arbitrarily
+    remove_front_element_from_heap(some_heap, &monitor->current_value);
+  } // else if (expired_in_heap == -1) { ... } // there was nothing to expire
   if (!isnan(next_entry)) {
     struct heap* heap_for_next = (next_entry > monitor->current_value.member)? monitor->right_heap : monitor->left_heap;
     struct heap_element* next_elem = add_value_to_heap(heap_for_next, next_entry);
+    if (next_elem == NULL) // BY DESIGN SHOULD NEVER HAPPEN
+      printf("TRIED TO ADD TO A FULL HEAP\n");
     register_in_queue(monitor->queue, next_elem);
   }
   monitor->count += 1;
@@ -132,15 +141,25 @@ int rebalance_rolling_quantile(struct rolling_quantile* monitor) {
   if (left_entries == left_target)
     return 0; // if-clauses with lone return statements don't need brackets in my book
   struct heap* overdue_heap = (left_entries < left_target)? monitor->right_heap : monitor->left_heap;
-  struct heap_element expelled_elem = remove_front_element_from_heap(overdue_heap); // take from the correct heap to restore balance.
+  struct heap_element holdover = monitor->current_value;
+  remove_front_element_from_heap(overdue_heap, &monitor->current_value); // take from the correct heap to restore balance. expelled element is transferred into our current slot
   struct heap* other_heap = (overdue_heap == monitor->right_heap)? monitor->left_heap : monitor->right_heap; // is it worth avoiding two separate branches of slightly redundant code?
-  if (!isnan(monitor->current_value.member)) {
-    add_element_to_heap(other_heap, monitor->current_value);
+  if (!isnan(holdover.member)) {
+    // this part does not rely on the actual address of `holdover`/`current_value`, thankfully
+    add_element_to_heap(other_heap, holdover); // the method knows that `*holdover.loc_in_buffer` is stale after copying
   }
-  monitor->current_value = expelled_elem;
   return rebalance_rolling_quantile(monitor) + 1; // is non-tail-call recursion *always* dangerous? each round performs one set of "remove and add"
 }
 
+/*
+  Consists of various sanity checks and tests on integrity.
+*/
 bool verify_monitor(struct rolling_quantile* monitor) {
+  double left = view_front_of_heap(monitor->left_heap);
+  if (!isnan(left) && (left > monitor->current_value.member))
+   return false;
+  double right = view_front_of_heap(monitor->right_heap);
+  if (!isnan(right) && (right < monitor->current_value.member))
+    return false;
   return verify_heap(monitor->left_heap) && verify_heap(monitor->right_heap);
 }
