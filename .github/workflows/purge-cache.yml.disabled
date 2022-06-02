@@ -1,5 +1,5 @@
 # purge cache of our README's "pip downloads" badge from Github's static image host, compelling it to refresh regularly.
-name: Purge cache.
+name: Purge Cache
 on:
   schedule:
   - cron: "0 0 * * *" # cron syntax is funky. herein, we execute at the end of every day (UTC)

@@ -5,7 +5,7 @@
 ## Hyper-efficient and composable filters.
 
 * Simple, clean, intuitive interface.
-* Supports streaming data or bulk processing.
+* Streaming or batch processing.
 * Python 3 bindings for a lean library written in pure C.
 
 ### A Quick Tour
@@ -75,7 +75,7 @@ These are the conditions under which binaries are built and sent to the Python P
 
 The meat of this package is a handful of C files with no external dependencies, besides NumPy 1.16+ and Python 3.7+ for the bindings located in `src/python.c`. As such, you may build from source by running the following from the project's root directory:
 1. `cd python`
-2. Check `pyproject.toml` to make sure the listed NumPy version matches your desired target.
+2. Check `pyproject.toml` to make sure the listed NumPy version matches your desired target. The compiled package will be forward- but not backward-compatible.
 3. `python -m build` (make sure this invokes Python 3)
 4. `pip install dist/<name_of_generated_wheel_file>.whl`
 

@@ -1,4 +1,4 @@
-name: Python tests.
+name: Python Tests
 
 on: [push, pull_request]
 
@@ -20,7 +20,7 @@ jobs: # jobs run in parallel. individual steps within a job do not.
       run: |
         python -m pip install --upgrade pip build
         cd python
-        python -m build --wheel
+        MACOSX_DEPLOYMENT_TARGET=10.9 python -m build --wheel
         python -m pip install dist/*.whl
         cd ..
     - name: Run tests.
