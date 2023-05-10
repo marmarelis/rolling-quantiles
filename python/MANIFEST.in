@@ -1,2 +1,4 @@
 global-exclude .DS_Store
 global-exclude pypi-token.txt
+include src/*.h
+include src/*.c
